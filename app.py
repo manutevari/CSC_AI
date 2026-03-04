@@ -1,3 +1,4 @@
+from mas_engine import ingest_pdf, ask_ai
 import streamlit as st
 from mas_engine import ask_ai
 from crawler import crawl_url
@@ -145,3 +146,4 @@ if st.button("Ask"):
         answer = ask_ai(query)
 
         st.write(answer)
+
