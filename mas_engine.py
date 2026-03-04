@@ -1,10 +1,14 @@
-from knowledge import search_knowledge
+from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
+
+embedding = HuggingFaceEmbeddings()
 
 def ask_ai(question):
 
-    docs = search_knowledge(question)
+    vector_db = FAISS.load_local("vector_store", embedding)
 
-    if docs:
-        return docs
-    else:
-        return "No information found in knowledge base."
+    docs = vector_db.similarity_search(question, k=3)
+
+    context = " ".join([doc.page_content for doc in docs])
+
+    return context
