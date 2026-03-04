@@ -2,44 +2,21 @@ import streamlit as st
 from mas_engine import ingest_pdf, ask_ai
 from crawler import crawl_url
 
+st.set_page_config(page_title="CSC AI Assistant")
 
-st.set_page_config(page_title="CSC AI Assistant", layout="wide")
-
-st.title("CSC AI Legal & Service Assistant")
-
-st.write(
-"""
-This assistant answers questions related to:
-
-• CSC services  
-• government schemes  
-• document requirements  
-• CSC legality  
-"""
-)
+st.title("CSC AI Knowledge Assistant")
 
 
-# -----------------------
-# Upload PDF
-# -----------------------
+uploaded_file = st.file_uploader("Upload CSC knowledge PDF", type=["pdf"])
 
-uploaded_pdf = st.file_uploader(
-    "Upload CSC Knowledge PDF",
-    type=["pdf"]
-)
+if uploaded_file:
 
-if uploaded_pdf:
+    ingest_pdf(uploaded_file)
 
-    ingest_pdf(uploaded_pdf)
-
-    st.success("PDF knowledge added to system")
+    st.success("Knowledge added")
 
 
-# -----------------------
-# Website ingestion
-# -----------------------
-
-url = st.text_input("Enter government website URL")
+url = st.text_input("Enter website URL")
 
 if st.button("Ingest Website"):
 
@@ -52,15 +29,9 @@ if st.button("Ingest Website"):
         st.success("Website knowledge added")
 
 
-# -----------------------
-# Ask Question
-# -----------------------
+query = st.text_input("Ask your CSC question")
 
-st.subheader("Ask CSC AI")
-
-query = st.text_input("Enter your question")
-
-if st.button("Ask AI"):
+if st.button("Ask"):
 
     if query:
 
