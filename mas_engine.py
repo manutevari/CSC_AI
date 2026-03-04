@@ -4,15 +4,16 @@ import pickle
 from sentence_transformers import SentenceTransformer
 from pypdf import PdfReader
 
+
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 VECTOR_FILE = "vector_store.index"
 TEXT_FILE = "texts.pkl"
 
 
-# -------------------------
-# PDF ingestion
-# -------------------------
+# -----------------------------
+# PDF INGESTION
+# -----------------------------
 
 def ingest_pdf(uploaded_file):
 
@@ -21,15 +22,19 @@ def ingest_pdf(uploaded_file):
     text = ""
 
     for page in reader.pages:
+
         page_text = page.extract_text()
+
         if page_text:
             text += page_text
+
 
     chunks = [text[i:i+500] for i in range(0, len(text), 500)]
 
     embeddings = model.encode(chunks)
 
     dim = embeddings.shape[1]
+
 
     try:
 
@@ -41,11 +46,14 @@ def ingest_pdf(uploaded_file):
     except:
 
         index = faiss.IndexFlatL2(dim)
+
         texts = []
+
 
     index.add(np.array(embeddings))
 
     texts.extend(chunks)
+
 
     faiss.write_index(index, VECTOR_FILE)
 
@@ -53,9 +61,9 @@ def ingest_pdf(uploaded_file):
         pickle.dump(texts, f)
 
 
-# -------------------------
-# retrieve context
-# -------------------------
+# -----------------------------
+# RETRIEVE CONTEXT
+# -----------------------------
 
 def retrieve_context(question, k=4):
 
@@ -76,18 +84,18 @@ def retrieve_context(question, k=4):
 
     except:
 
-        return "Knowledge base empty. Please upload documents."
+        return "Knowledge base is empty. Please upload documents."
 
 
-# -------------------------
-# question classification
-# -------------------------
+# -----------------------------
+# CLASSIFY QUESTION
+# -----------------------------
 
 def classify_question(question):
 
     q = question.lower()
 
-    if "fee" in q or "charge" in q:
+    if "fee" in q or "charge" in q or "price" in q:
         return "pricing"
 
     elif "document" in q or "required" in q:
@@ -106,17 +114,13 @@ def classify_question(question):
         return "unknown"
 
 
-# -------------------------
-# guardrails
-# -------------------------
+# -----------------------------
+# GUARDRAILS
+# -----------------------------
 
 def guardrail_filter(question):
 
-    banned = [
-        "hack",
-        "fraud",
-        "illegal bypass"
-    ]
+    banned = ["hack", "fraud", "illegal bypass"]
 
     q = question.lower()
 
@@ -128,38 +132,35 @@ def guardrail_filter(question):
     return True
 
 
-# -------------------------
-# main AI logic
-# -------------------------
+# -----------------------------
+# MAIN AI ENGINE
+# -----------------------------
 
 def ask_ai(question):
 
     if guardrail_filter(question) == False:
 
         return """
-This query violates safety rules.
-
-The system only answers questions about:
-• CSC services
-• government schemes
-• service legality
+This system only answers questions related to CSC services
+and government schemes.
 """
+
 
     category = classify_question(question)
 
     context = retrieve_context(question)
+
 
     if category == "pricing":
 
         answer = f"""
 CSC pricing must follow official service charges.
 
-Relevant context:
+Relevant information:
 {context}
 
 Conclusion:
-VLEs should follow CSC SPV or UIDAI approved pricing.
-Extra charges beyond permitted service fees may violate rules.
+VLEs must follow CSC or UIDAI approved service fees.
 """
 
     elif category == "documents":
@@ -167,23 +168,23 @@ Extra charges beyond permitted service fees may violate rules.
         answer = f"""
 Document requirements depend on the service.
 
-Relevant context:
+Relevant information:
 {context}
 
 Conclusion:
-Applicants must provide valid identity and supporting documents.
+Applicants must provide valid identity documents.
 """
 
     elif category == "legal":
 
         answer = f"""
-Legal interpretation based on CSC policies.
+Legal interpretation based on CSC guidelines.
 
-Relevant context:
+Relevant information:
 {context}
 
 Conclusion:
-CSC operators must follow Digital Seva and government guidelines.
+CSC operators must follow Digital Seva policies.
 """
 
     elif category == "process":
@@ -191,11 +192,11 @@ CSC operators must follow Digital Seva and government guidelines.
         answer = f"""
 Service application process explanation.
 
-Relevant context:
+Relevant information:
 {context}
 
 Conclusion:
-Most services are applied through the Digital Seva portal.
+Applications are usually processed via Digital Seva portal.
 """
 
     else:
@@ -204,14 +205,12 @@ Most services are applied through the Digital Seva portal.
 Relevant information found:
 
 {context}
-
-Please verify with official CSC guidelines.
 """
 
     answer += """
 
 ⚠ Guardrail Notice:
-Always verify final information from official CSC portals.
+Always verify final details from official CSC portals.
 """
 
     return answer
