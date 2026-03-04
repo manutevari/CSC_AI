@@ -1,13 +1,16 @@
 import requests
 from bs4 import BeautifulSoup
 
-
 def crawl_url(url):
 
-    page = requests.get(url)
+    try:
 
-    soup = BeautifulSoup(page.text, "html.parser")
+        page = requests.get(url)
 
-    text = soup.get_text()
+        soup = BeautifulSoup(page.text,"html.parser")
 
-    return text
+        return soup.get_text()
+
+    except:
+
+        return ""
