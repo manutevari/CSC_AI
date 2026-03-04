@@ -1,0 +1,9 @@
+with tab2:
+
+    text = st.text_area("Add knowledge")
+
+    if st.button("Store"):
+
+        add_knowledge(text)
+
+        st.success("Knowledge added")

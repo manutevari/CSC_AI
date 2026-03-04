@@ -1,0 +1,6 @@
+streamlit
+psycopg2-binary
+langchain-openai
+tavily
+beautifulsoup4
+requests
