@@ -1,9 +1,0 @@
-with tab1:
-
-    query = st.text_input("Ask question")
-
-    if st.button("Ask"):
-
-        answer = ask(query)
-
-        st.write(answer)
