@@ -4,7 +4,6 @@ import pickle
 from sentence_transformers import SentenceTransformer
 from pypdf import PdfReader
 
-
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 VECTOR_FILE = "vector_store.index"
@@ -12,7 +11,28 @@ TEXT_FILE = "texts.pkl"
 
 
 # -----------------------------
-# PDF INGESTION
+# CSC BUILT-IN KNOWLEDGE
+# -----------------------------
+
+CSC_SERVICES = {
+
+"aadhaar update":
+"Aadhaar update services include demographic and biometric updates through authorized CSC operators.",
+
+"pmegp":
+"PMEGP is a government scheme supporting micro enterprises with credit linked subsidy.",
+
+"fssai":
+"FSSAI registration and licensing can be applied through CSC portals.",
+
+"pan card":
+"PAN card applications can be submitted through CSC using NSDL or UTI portals."
+
+}
+
+
+# -----------------------------
+# PDF ingestion
 # -----------------------------
 
 def ingest_pdf(uploaded_file):
@@ -26,10 +46,11 @@ def ingest_pdf(uploaded_file):
         page_text = page.extract_text()
 
         if page_text:
+
             text += page_text
 
 
-    chunks = [text[i:i+500] for i in range(0, len(text), 500)]
+    chunks = [text[i:i+500] for i in range(0,len(text),500)]
 
     embeddings = model.encode(chunks)
 
@@ -40,7 +61,8 @@ def ingest_pdf(uploaded_file):
 
         index = faiss.read_index(VECTOR_FILE)
 
-        with open(TEXT_FILE, "rb") as f:
+        with open(TEXT_FILE,"rb") as f:
+
             texts = pickle.load(f)
 
     except:
@@ -55,28 +77,30 @@ def ingest_pdf(uploaded_file):
     texts.extend(chunks)
 
 
-    faiss.write_index(index, VECTOR_FILE)
+    faiss.write_index(index,VECTOR_FILE)
 
-    with open(TEXT_FILE, "wb") as f:
-        pickle.dump(texts, f)
+    with open(TEXT_FILE,"wb") as f:
+
+        pickle.dump(texts,f)
 
 
 # -----------------------------
-# RETRIEVE CONTEXT
+# retrieve context
 # -----------------------------
 
-def retrieve_context(question, k=4):
+def retrieve_context(question,k=3):
 
     try:
 
         index = faiss.read_index(VECTOR_FILE)
 
-        with open(TEXT_FILE, "rb") as f:
+        with open(TEXT_FILE,"rb") as f:
+
             texts = pickle.load(f)
 
         q_embedding = model.encode([question])
 
-        D, I = index.search(np.array(q_embedding), k)
+        D,I = index.search(np.array(q_embedding),k)
 
         results = [texts[i] for i in I[0]]
 
@@ -84,133 +108,132 @@ def retrieve_context(question, k=4):
 
     except:
 
-        return "Knowledge base is empty. Please upload documents."
+        return ""
 
 
 # -----------------------------
-# CLASSIFY QUESTION
+# guardrails
 # -----------------------------
 
-def classify_question(question):
+def guardrail(question):
 
-    q = question.lower()
-
-    if "fee" in q or "charge" in q or "price" in q:
-        return "pricing"
-
-    elif "document" in q or "required" in q:
-        return "documents"
-
-    elif "legal" in q or "allowed" in q:
-        return "legal"
-
-    elif "apply" in q or "registration" in q:
-        return "process"
-
-    elif "service" in q or "csc" in q:
-        return "general"
-
-    else:
-        return "unknown"
-
-
-# -----------------------------
-# GUARDRAILS
-# -----------------------------
-
-def guardrail_filter(question):
-
-    banned = ["hack", "fraud", "illegal bypass"]
+    banned = ["hack","fraud","illegal bypass"]
 
     q = question.lower()
 
     for word in banned:
 
         if word in q:
+
             return False
 
     return True
 
 
 # -----------------------------
-# MAIN AI ENGINE
+# classification
+# -----------------------------
+
+def classify(question):
+
+    q = question.lower()
+
+    if "fee" in q or "charge" in q:
+
+        return "pricing"
+
+    elif "document" in q:
+
+        return "documents"
+
+    elif "legal" in q or "allowed" in q:
+
+        return "legal"
+
+    elif "apply" in q or "process" in q:
+
+        return "process"
+
+    else:
+
+        return "general"
+
+
+# -----------------------------
+# main AI logic
 # -----------------------------
 
 def ask_ai(question):
 
-    if guardrail_filter(question) == False:
+    if guardrail(question) == False:
 
-        return """
-This system only answers questions related to CSC services
-and government schemes.
-"""
+        return "This system only answers legal CSC service questions."
 
 
-    category = classify_question(question)
+    category = classify(question)
 
     context = retrieve_context(question)
 
 
+    # check built-in CSC knowledge
+
+    for key in CSC_SERVICES:
+
+        if key in question.lower():
+
+            return CSC_SERVICES[key]
+
+
     if category == "pricing":
 
-        answer = f"""
+        return f"""
 CSC pricing must follow official service charges.
 
-Relevant information:
+Context:
 {context}
 
-Conclusion:
-VLEs must follow CSC or UIDAI approved service fees.
+Always follow CSC SPV or UIDAI pricing guidelines.
 """
 
-    elif category == "documents":
-
-        answer = f"""
-Document requirements depend on the service.
-
-Relevant information:
-{context}
-
-Conclusion:
-Applicants must provide valid identity documents.
-"""
 
     elif category == "legal":
 
-        answer = f"""
-Legal interpretation based on CSC guidelines.
+        return f"""
+CSC operators must follow Digital Seva policies.
 
-Relevant information:
+Context:
 {context}
 
-Conclusion:
-CSC operators must follow Digital Seva policies.
+Operating outside approved services may not be legally permitted.
 """
+
+
+    elif category == "documents":
+
+        return f"""
+Document requirements depend on the service.
+
+Context:
+{context}
+"""
+
 
     elif category == "process":
 
-        answer = f"""
+        return f"""
 Service application process explanation.
 
-Relevant information:
+Context:
 {context}
-
-Conclusion:
-Applications are usually processed via Digital Seva portal.
 """
+
 
     else:
 
-        answer = f"""
+        return f"""
 Relevant information found:
 
 {context}
+
+⚠ Always verify with official CSC portals.
 """
-
-    answer += """
-
-⚠ Guardrail Notice:
-Always verify final details from official CSC portals.
-"""
-
-    return answer
