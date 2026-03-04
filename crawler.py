@@ -1,16 +1,29 @@
 import requests
 from bs4 import BeautifulSoup
+from database import get_connection
+from langchain_openai import OpenAIEmbeddings
 
-def crawl_url(url):
+embeddings = OpenAIEmbeddings()
 
-    try:
+def ingest_url(url):
 
-        page = requests.get(url)
+    response = requests.get(url)
 
-        soup = BeautifulSoup(page.text,"html.parser")
+    soup = BeautifulSoup(response.text,"html.parser")
 
-        return soup.get_text()
+    text = soup.get_text()
 
-    except:
+    vector = embeddings.embed_query(text)
 
-        return ""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "INSERT INTO knowledge (content, embedding) VALUES (%s,%s)",
+        (text, vector)
+    )
+
+    conn.commit()
+
+    cur.close()
+    conn.close()
