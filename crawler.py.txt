@@ -1,9 +1,0 @@
-with tab3:
-
-    url = st.text_input("Website URL")
-
-    if st.button("Crawl"):
-
-        smart_crawl(url,20)
-
-        st.success("Crawl completed")
