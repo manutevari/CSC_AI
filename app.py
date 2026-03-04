@@ -18,9 +18,21 @@ st.title("CSC Enterprise AI Assistant")
 # -----------------------------------
 # DATABASE CONNECTION
 # -----------------------------------
+# -----------------------------------
+# DATABASE CONNECTION
+# -----------------------------------
 
-conn = psycopg2.connect(st.secrets["DB_URL"])
-cursor = conn.cursor()
+try:
+
+    conn = psycopg2.connect(st.secrets["DB_URL"])
+
+    cursor = conn.cursor()
+
+except Exception as e:
+
+    st.error("Database connection failed")
+
+    st.stop()
 
 # -----------------------------------
 # LLM
@@ -237,3 +249,4 @@ with tab4:
     for r in rows:
 
         st.write(r)
+
