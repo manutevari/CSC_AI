@@ -1,6 +1,5 @@
 from knowledge import search_knowledge
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage
 
 llm = ChatOpenAI(
     model="gpt-4o-mini",
@@ -12,9 +11,8 @@ def ask_ai(question):
     docs = search_knowledge(question)
 
     if docs:
-
         prompt = f"""
-Use the following knowledge to answer.
+Use the following knowledge to answer the question.
 
 Knowledge:
 {docs}
@@ -22,12 +20,9 @@ Knowledge:
 Question:
 {question}
 """
-
     else:
         prompt = question
 
-    response = llm.invoke(
-        [HumanMessage(content=prompt)]
-    )
+    response = llm.invoke(prompt)
 
     return response.content
