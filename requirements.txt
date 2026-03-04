@@ -2,7 +2,7 @@ streamlit
 faiss-cpu
 sentence-transformers
 pypdf
-python-docx
+numpy
 requests
 beautifulsoup4
-numpy
+python-docx
