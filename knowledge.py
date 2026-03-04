@@ -1,16 +1,40 @@
-knowledge_base = {
-    "csc": "Common Service Center is a digital service delivery system.",
-    "aadhaar": "CSC centers provide Aadhaar update and enrollment services.",
-    "pmegp": "PMEGP loan scheme supports micro enterprises."
-}
+from database import get_connection
+from langchain_openai import OpenAIEmbeddings
+import numpy as np
 
+embeddings = OpenAIEmbeddings()
 
-def search_knowledge(query):
+def search_knowledge(question, top_k=3):
 
-    query = query.lower()
+    query_embedding = embeddings.embed_query(question)
 
-    for key in knowledge_base:
-        if key in query:
-            return knowledge_base[key]
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT content, embedding FROM knowledge"
+    )
+
+    rows = cur.fetchall()
+
+    scores = []
+
+    for r in rows:
+        content = r[0]
+        vector = r[1]
+
+        score = np.dot(query_embedding, vector)
+
+        scores.append((score, content))
+
+    scores.sort(reverse=True)
+
+    results = [s[1] for s in scores[:top_k]]
+
+    cur.close()
+    conn.close()
+
+    if results:
+        return "\n".join(results)
 
     return None
