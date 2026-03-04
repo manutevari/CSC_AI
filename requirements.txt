@@ -1,10 +1,7 @@
 streamlit
 psycopg2-binary
-langchain-openai
-langgraph
-tavily
-beautifulsoup4
-lxml
 requests
-openai
-pandas
+beautifulsoup4
+langchain
+faiss-cpu
+sentence-transformers
