@@ -1,52 +1,16 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+knowledge_base = {
+    "csc": "Common Service Center is a digital service delivery system.",
+    "aadhaar": "CSC centers provide Aadhaar update and enrollment services.",
+    "pmegp": "PMEGP loan scheme supports micro enterprises."
+}
 
-from database import conn
-from embeddings import chunk, store_vector
 
+def search_knowledge(query):
 
-def smart_crawl(start_url, max_pages=20):
+    query = query.lower()
 
-    visited = set()
-    queue = [start_url]
+    for key in knowledge_base:
+        if key in query:
+            return knowledge_base[key]
 
-    domain = urlparse(start_url).netloc
-
-    while queue and len(visited) < max_pages:
-
-        url = queue.pop(0)
-
-        if url in visited:
-            continue
-
-        visited.add(url)
-
-        try:
-
-            r = requests.get(url, timeout=10)
-
-            soup = BeautifulSoup(r.text, "lxml")
-
-            for t in soup(["script", "style", "noscript"]):
-                t.extract()
-
-            text = soup.get_text(" ")
-
-            for c in chunk(text):
-
-                store_vector(c, url)
-
-            for link in soup.find_all("a", href=True):
-
-                absolute = urljoin(url, link["href"])
-
-                if domain in absolute and absolute not in visited:
-
-                    queue.append(absolute)
-
-        except Exception:
-
-            pass
-
-    conn.commit()
+    return None
