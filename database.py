@@ -1,7 +1,11 @@
 import psycopg2
 import streamlit as st
 
-# Connect using Streamlit secrets
-conn = psycopg2.connect(st.secrets["DB_URL"])
-
-cursor = conn.cursor()
+def get_connection():
+    return psycopg2.connect(
+        host=st.secrets["database"]["host"],
+        port=st.secrets["database"]["port"],
+        dbname=st.secrets["database"]["dbname"],
+        user=st.secrets["database"]["user"],
+        password=st.secrets["database"]["password"]
+    )
