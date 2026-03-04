@@ -2,8 +2,8 @@ import faiss
 import numpy as np
 import pickle
 from sentence_transformers import SentenceTransformer
+from pypdf import PdfReader
 
-# embedding model
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 VECTOR_FILE = "vector_store.index"
@@ -11,12 +11,56 @@ TEXT_FILE = "texts.pkl"
 
 
 # -------------------------
-# Retrieve context
+# PDF ingestion
+# -------------------------
+
+def ingest_pdf(uploaded_file):
+
+    reader = PdfReader(uploaded_file)
+
+    text = ""
+
+    for page in reader.pages:
+        page_text = page.extract_text()
+        if page_text:
+            text += page_text
+
+    chunks = [text[i:i+500] for i in range(0, len(text), 500)]
+
+    embeddings = model.encode(chunks)
+
+    dim = embeddings.shape[1]
+
+    try:
+
+        index = faiss.read_index(VECTOR_FILE)
+
+        with open(TEXT_FILE, "rb") as f:
+            texts = pickle.load(f)
+
+    except:
+
+        index = faiss.IndexFlatL2(dim)
+        texts = []
+
+    index.add(np.array(embeddings))
+
+    texts.extend(chunks)
+
+    faiss.write_index(index, VECTOR_FILE)
+
+    with open(TEXT_FILE, "wb") as f:
+        pickle.dump(texts, f)
+
+
+# -------------------------
+# retrieve context
 # -------------------------
 
 def retrieve_context(question, k=4):
 
     try:
+
         index = faiss.read_index(VECTOR_FILE)
 
         with open(TEXT_FILE, "rb") as f:
@@ -31,24 +75,25 @@ def retrieve_context(question, k=4):
         return " ".join(results)
 
     except:
+
         return "Knowledge base empty. Please upload documents."
 
 
 # -------------------------
-# Question classification
+# question classification
 # -------------------------
 
 def classify_question(question):
 
     q = question.lower()
 
-    if "fee" in q or "charge" in q or "price" in q:
+    if "fee" in q or "charge" in q:
         return "pricing"
 
     elif "document" in q or "required" in q:
         return "documents"
 
-    elif "legal" in q or "allowed" in q or "law" in q:
+    elif "legal" in q or "allowed" in q:
         return "legal"
 
     elif "apply" in q or "registration" in q:
@@ -62,19 +107,18 @@ def classify_question(question):
 
 
 # -------------------------
-# Guardrail system
+# guardrails
 # -------------------------
 
 def guardrail_filter(question):
 
-    q = question.lower()
-
     banned = [
         "hack",
-        "illegal activity",
         "fraud",
-        "bypass government"
+        "illegal bypass"
     ]
+
+    q = question.lower()
 
     for word in banned:
 
@@ -85,70 +129,61 @@ def guardrail_filter(question):
 
 
 # -------------------------
-# Main AI Engine
+# main AI logic
 # -------------------------
 
 def ask_ai(question):
 
-    # guardrail check
-    allowed = guardrail_filter(question)
-
-    if allowed == False:
+    if guardrail_filter(question) == False:
 
         return """
-This query violates system safety rules.
+This query violates safety rules.
 
-The CSC AI assistant only answers questions related to:
+The system only answers questions about:
 • CSC services
 • government schemes
-• service guidelines
-• documentation requirements
+• service legality
 """
 
-    # classify question
     category = classify_question(question)
 
     context = retrieve_context(question)
 
-    # reasoning logic
-
     if category == "pricing":
 
         answer = f"""
-CSC pricing rules depend on official guidelines.
+CSC pricing must follow official service charges.
 
-Relevant information:
+Relevant context:
 {context}
 
 Conclusion:
-CSC VLEs should follow the official service charges defined by CSC SPV or UIDAI.
-Charging beyond approved service fees may violate service rules unless extra optional assistance is provided.
+VLEs should follow CSC SPV or UIDAI approved pricing.
+Extra charges beyond permitted service fees may violate rules.
 """
 
     elif category == "documents":
 
         answer = f"""
-Document requirements depend on the specific CSC service.
+Document requirements depend on the service.
 
-Relevant information:
+Relevant context:
 {context}
 
 Conclusion:
-Applicants must provide valid identity and supporting documents as defined by the scheme guidelines.
-Always verify requirements on the official CSC or government portal.
+Applicants must provide valid identity and supporting documents.
 """
 
     elif category == "legal":
 
         answer = f"""
-Legal interpretation based on CSC operational guidelines.
+Legal interpretation based on CSC policies.
 
-Relevant information:
+Relevant context:
 {context}
 
 Conclusion:
-CSC operators must comply with Digital Seva and government policies.
-Activities outside approved service guidelines may not be legally permitted.
+CSC operators must follow Digital Seva and government guidelines.
 """
 
     elif category == "process":
@@ -156,44 +191,27 @@ Activities outside approved service guidelines may not be legally permitted.
         answer = f"""
 Service application process explanation.
 
-Relevant information:
+Relevant context:
 {context}
 
 Conclusion:
-Most CSC services are applied through the Digital Seva portal using VLE credentials.
-Follow official workflow defined by CSC SPV.
-"""
-
-    elif category == "general":
-
-        answer = f"""
-CSC service explanation.
-
-Relevant information:
-{context}
-
-Conclusion:
-Common Service Centers provide digital public services including Aadhaar updates,
-government scheme applications, financial services, and utility services.
+Most services are applied through the Digital Seva portal.
 """
 
     else:
 
         answer = f"""
-The system could not classify the question precisely.
+Relevant information found:
 
-Relevant information:
 {context}
 
-Please refine your question related to CSC services or government schemes.
+Please verify with official CSC guidelines.
 """
 
-    # final guardrail message
     answer += """
 
 ⚠ Guardrail Notice:
-This answer is generated from the CSC knowledge base.
-Always verify official guidelines from CSC or the relevant government portal.
+Always verify final information from official CSC portals.
 """
 
     return answer
